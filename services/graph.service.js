@@ -307,23 +307,8 @@ async (siteId, date) => {
    ).slice(-500);
    const grouped = {};
 
-     // Rakshit Add
 
-   const now = new Date();
-
-   const filteredRows = rows.filter(
-      row => new Date(row.timestamp) <= now
-   );
-   // ==============
-
-   filteredRows  // Rakshit Add
-
-   const now = new Date();
-
-   const filteredRows = rows.filter(
-      row => new Date(row.timestamp) <= now
-   );
-   // ==============.forEach((row) => {
+   rows.forEach((row) => {
 
       if (!row.timestamp) return;
 
@@ -436,15 +421,8 @@ async (siteId, date) => {
 ).slice(-500);
 
    const grouped = {};
-   // Rakshit Add
-
-   const now = new Date();
-
-   const filteredRows = rows.filter(
-      row => new Date(row.timestamp) <= now
-   );
-   // ==============
-   filteredRows.forEach((row) => {
+   
+   rows.forEach((row) => {
 
       if (!row.timestamp) return;
 
