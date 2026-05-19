@@ -265,60 +265,43 @@ async (siteId, date) => {
       throw new Error('Invalid Site');
    }
 
-   const month =
-      new Date(date);
+   const month = new Date(date);
 
    const start =
       new Date(Date.UTC(
-
          month.getUTCFullYear(),
-
          month.getUTCMonth(),
-
          1
-
       ));
 
    const end =
       new Date(Date.UTC(
-
          month.getUTCFullYear(),
-
          month.getUTCMonth() + 1,
-
          0,
-
          23,
-
          59,
-
          59
-
       ));
 
    const rows =
       await getRows(
-
          site,
-
          start.toISOString(),
-
          end.toISOString()
-
       );
 
    const grouped = {};
 
    rows.forEach((row) => {
 
+      if (!row.timestamp) return;
+
       const day =
-         row.timestamp
-         .split('T')[0];
+         row.timestamp.split('T')[0];
 
       if (!grouped[day]) {
-
          grouped[day] = [];
-
       }
 
       grouped[day].push(row);
@@ -328,57 +311,45 @@ async (siteId, date) => {
    return Object.entries(grouped)
       .map(([date, records]) => {
 
-         // SORT DAILY RECORDS
+         records.sort((a, b) =>
+            new Date(a.timestamp)
+            - new Date(b.timestamp)
+         );
 
-         records.sort((a, b) => {
-
-            return new Date(a.timestamp)
-            - new Date(b.timestamp);
-
-         });
-
-         const first =
-            records[0];
-
-         const last =
-            records[
-               records.length - 1
-            ];
+         const first = records[0];
+         const last = records[records.length - 1];
 
          const firstMeters =
-            parseData(first.meters);
+            parseData(first.meters || {});
 
          const lastMeters =
-            parseData(last.meters);
+            parseData(last.meters || {});
+
+         const importValue =
+            Number(getGridImport(lastMeters) || 0)
+            -
+            Number(getGridImport(firstMeters) || 0);
+
+         const exportValue =
+            Number(getGridExport(lastMeters) || 0)
+            -
+            Number(getGridExport(firstMeters) || 0);
 
          return {
 
             date,
 
             import:
-               Number((
-
-                  getGridImport(lastMeters)
-                  -
-                  getGridImport(firstMeters)
-
-               ).toFixed(2)),
+               Number(importValue.toFixed(2)),
 
             export:
-               Number((
-
-                  getGridExport(lastMeters)
-                  -
-                  getGridExport(firstMeters)
-
-               ).toFixed(2))
+               Number(exportValue.toFixed(2))
 
          };
 
       });
 
 };
-
 
 // =========================
 // SOLAR GENERATION GRAPH
@@ -398,55 +369,39 @@ async (siteId, date) => {
 
    const start =
       new Date(Date.UTC(
-
          month.getUTCFullYear(),
-
          month.getUTCMonth(),
-
          1
-
       ));
 
    const end =
       new Date(Date.UTC(
-
          month.getUTCFullYear(),
-
          month.getUTCMonth() + 1,
-
          0,
-
          23,
-
          59,
-
          59
-
       ));
 
    const rows =
       await getRows(
-
          site,
-
          start.toISOString(),
-
          end.toISOString()
-
       );
 
    const grouped = {};
 
    rows.forEach((row) => {
 
+      if (!row.timestamp) return;
+
       const day =
-         row.timestamp
-         .split('T')[0];
+         row.timestamp.split('T')[0];
 
       if (!grouped[day]) {
-
          grouped[day] = [];
-
       }
 
       grouped[day].push(row);
@@ -456,30 +411,28 @@ async (siteId, date) => {
    return Object.entries(grouped)
       .map(([date, records]) => {
 
-         records.sort((a, b) => {
-
-            return new Date(a.timestamp)
-            - new Date(b.timestamp);
-
-         });
+         records.sort((a, b) =>
+            new Date(a.timestamp)
+            - new Date(b.timestamp)
+         );
 
          const last =
-            records[
-               records.length - 1
-            ];
+            records[records.length - 1];
 
          const inverters =
-            parseData(last.inverters);
+            parseData(last.inverters || {});
+
+         const generation =
+            Number(
+               getSolarDayTotal(inverters) || 0
+            );
 
          return {
 
             date,
 
             generation:
-               Number(
-                  getSolarDayTotal(inverters)
-                  .toFixed(2)
-               )
+               Number(generation.toFixed(2))
 
          };
 
