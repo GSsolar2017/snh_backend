@@ -9,13 +9,8 @@ const app = express();
 
 // CORS
 app.use(cors({
-  origin: [
-    'https://snh-frontend.vercel.app'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  origin: '*'
 }));
-
 // Middleware
 app.use(helmet());
 app.use(morgan('dev'));
