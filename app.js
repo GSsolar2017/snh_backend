@@ -7,7 +7,11 @@ const morgan = require('morgan');
 const app = express();
 
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://snh-frontend.vercel.app'
+  ]
+}));
 app.use(helmet());
 app.use(morgan('dev'));
 
