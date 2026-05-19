@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",     
+    "start": "node --max-old-space-size=512 server.js",
     "dev": "nodemon server.js"
   },
   "keywords": [],
@@ -25,3 +25,4 @@
     "morgan": "^1.10.1"
   }
 }
+

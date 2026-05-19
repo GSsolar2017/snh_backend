@@ -291,16 +291,39 @@ async (siteId, date) => {
    //       end.toISOString()
    //    );
 
-   const rows =
-   (await getRows(
+   // const rows =
+   // (await getRows(
+   //    site,
+   //    start.toISOString(),
+   //    end.toISOString()
+   // )).slice(-3000);
+
+   const rows = (
+   await getRows(
       site,
       start.toISOString(),
       end.toISOString()
-   )).slice(-3000);
-
+   )
+   ).slice(-500);
    const grouped = {};
 
-   rows.forEach((row) => {
+     // Rakshit Add
+
+   const now = new Date();
+
+   const filteredRows = rows.filter(
+      row => new Date(row.timestamp) <= now
+   );
+   // ==============
+
+   filteredRows  // Rakshit Add
+
+   const now = new Date();
+
+   const filteredRows = rows.filter(
+      row => new Date(row.timestamp) <= now
+   );
+   // ==============.forEach((row) => {
 
       if (!row.timestamp) return;
 
@@ -397,16 +420,31 @@ async (siteId, date) => {
    //       start.toISOString(),
    //       end.toISOString()
    //    );
-   const rows =
-   (await getRows(
+   // const rows =
+   // (await getRows(
+   //    site,
+   //    start.toISOString(),
+   //    end.toISOString()
+   // )).slice(-3000);
+
+   const rows = (
+   await getRows(
       site,
       start.toISOString(),
       end.toISOString()
-   )).slice(-3000);
+   )
+).slice(-500);
 
    const grouped = {};
+   // Rakshit Add
 
-   rows.forEach((row) => {
+   const now = new Date();
+
+   const filteredRows = rows.filter(
+      row => new Date(row.timestamp) <= now
+   );
+   // ==============
+   filteredRows.forEach((row) => {
 
       if (!row.timestamp) return;
 

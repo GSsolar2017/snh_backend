@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const app = express();
-
+// "start": "node server.js",
 // CORS
 app.use(cors({
   origin: '*'
