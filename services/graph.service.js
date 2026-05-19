@@ -284,12 +284,19 @@ async (siteId, date) => {
          59
       ));
 
+   // const rows =
+   //    await getRows(
+   //       site,
+   //       start.toISOString(),
+   //       end.toISOString()
+   //    );
+
    const rows =
-      await getRows(
-         site,
-         start.toISOString(),
-         end.toISOString()
-      );
+   (await getRows(
+      site,
+      start.toISOString(),
+      end.toISOString()
+   )).slice(-3000);
 
    const grouped = {};
 
@@ -384,12 +391,18 @@ async (siteId, date) => {
          59
       ));
 
+   // const rows =
+   //    await getRows(
+   //       site,
+   //       start.toISOString(),
+   //       end.toISOString()
+   //    );
    const rows =
-      await getRows(
-         site,
-         start.toISOString(),
-         end.toISOString()
-      );
+   (await getRows(
+      site,
+      start.toISOString(),
+      end.toISOString()
+   )).slice(-3000);
 
    const grouped = {};
 
