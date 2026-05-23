@@ -6,41 +6,115 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const app = express();
-// "start": "node server.js",
-// CORS
+
+/* =========================
+   MIDDLEWARE
+========================= */
+
 app.use(cors({
-  origin: '*'
+   origin: '*'
 }));
-// Middleware
+
 app.use(helmet());
+
 app.use(morgan('dev'));
+
 app.use(express.json());
 
-// Routes
-const testRoutes = require('./routes/test.routes');
-app.use('/api/test', testRoutes);
+/* =========================
+   ROUTES
+========================= */
 
-const liveRoutes = require('./routes/live.routes');
-app.use('/api/site', liveRoutes);
+const testRoutes =
+require('./routes/test.routes');
 
-const dashboardRoutes = require('./routes/dashboard.routes');
-app.use('/api/dashboard', dashboardRoutes);
+const authRoutes =
+require('./routes/auth.routes');
 
-// Health check route
+const liveRoutes =
+require('./routes/live.routes');
+
+const dashboardRoutes =
+require('./routes/dashboard.routes');
+
+const graphRoutes =
+require('./routes/graph.routes');
+
+/* TEST */
+
+app.use(
+   '/api/test',
+   testRoutes
+);
+
+/* AUTH */
+
+app.use(
+   '/api',
+   authRoutes
+);
+
+/* LIVE + GRAPHS */
+
+app.use(
+   '/api/site',
+   liveRoutes
+);
+
+/* DASHBOARD */
+
+app.use(
+   '/api',
+   dashboardRoutes
+);
+
+app.use(
+   '/api/graphs',
+   graphRoutes
+);
+
+/* =========================
+   HEALTH CHECK
+========================= */
+
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Backend is running'
-  });
+
+   res.json({
+
+      success: true,
+
+      message: 'Backend Running'
+
+   });
+
 });
 
-// Error handling
-process.on('uncaughtException', err => {
-  console.log('UNCAUGHT EXCEPTION:', err);
-});
+/* =========================
+   ERROR HANDLING
+========================= */
 
-process.on('unhandledRejection', err => {
-  console.log('UNHANDLED REJECTION:', err);
-});
+process.on(
+   'uncaughtException',
+   err => {
+
+      console.log(
+         'UNCAUGHT EXCEPTION:',
+         err
+      );
+
+   }
+);
+
+process.on(
+   'unhandledRejection',
+   err => {
+
+      console.log(
+         'UNHANDLED REJECTION:',
+         err
+      );
+
+   }
+);
 
 module.exports = app;

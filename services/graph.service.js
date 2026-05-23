@@ -27,27 +27,41 @@ const {
 } = require('../helpers/dashboard.helper');
 
 
+
 // =========================
 // DAY RANGE
 // =========================
 
 const getDayRange = (date) => {
 
+   // DEFAULT TODAY
+   if (!date) {
+
+      date =
+         new Date()
+         .toISOString()
+         .split("T")[0];
+   }
+
+   // LOCAL TIME (NO UTC SHIFT)
    const start =
-      new Date(`${date}T00:00:00.000Z`);
+      new Date(`${date}T00:00:00`);
 
    const end =
-      new Date(`${date}T23:59:59.999Z`);
+      new Date(`${date}T23:59:59`);
 
    return {
 
-      start: start.toISOString(),
+      start:
+         start.toISOString(),
 
-      end: end.toISOString()
+      end:
+         end.toISOString()
 
    };
 
 };
+
 
 
 // =========================
@@ -59,12 +73,14 @@ async (site, start, end) => {
 
    let items = [];
 
-   let ExclusiveStartKey = undefined;
+   let ExclusiveStartKey =
+      undefined;
 
    do {
 
       const result =
          await dynamoDB.send(
+
             new QueryCommand({
 
                TableName:
@@ -74,7 +90,9 @@ async (site, start, end) => {
                   'deviceId = :deviceId AND #ts BETWEEN :start AND :end',
 
                ExpressionAttributeNames: {
-                  '#ts': 'timestamp'
+
+                  '#ts':
+                     'timestamp'
                },
 
                ExpressionAttributeValues: {
@@ -87,13 +105,11 @@ async (site, start, end) => {
 
                   ':end':
                      end
-
                },
 
                ScanIndexForward: true,
 
                ExclusiveStartKey
-
             })
          );
 
@@ -104,18 +120,50 @@ async (site, start, end) => {
       ExclusiveStartKey =
          result.LastEvaluatedKey;
 
-   } while (ExclusiveStartKey);
+   }
+
+   while (ExclusiveStartKey);
+
+
 
    items.sort((a, b) => {
 
-      return new Date(a.timestamp)
-      - new Date(b.timestamp);
+      return (
+         new Date(a.timestamp)
+         -
+         new Date(b.timestamp)
+      );
 
    });
 
    return items;
 
 };
+
+
+
+// =========================
+// SMART FILTER
+// =========================
+
+const getFilteredRows = (rows) => {
+
+   if (!rows.length) return [];
+
+   const step =
+      Math.max(
+         1,
+         Math.ceil(rows.length / 100)
+      );
+
+   return rows.filter((_, index) => {
+
+      return index % step === 0;
+
+   });
+
+};
+
 
 
 // =========================
@@ -125,10 +173,20 @@ async (site, start, end) => {
 exports.getEnergySourceGraph =
 async (siteId, date) => {
 
-   const site = sites[siteId];
+   console.log("siteId:", siteId);
+   console.log("available sites:", Object.keys(sites));
+
+   const site =
+      sites[siteId?.trim()];
 
    if (!site) {
-      throw new Error('Invalid Site');
+
+      return {
+
+         success: false,
+
+         message: 'Invalid siteId'
+      };
    }
 
    const { start, end } =
@@ -142,52 +200,122 @@ async (siteId, date) => {
       );
 
    const filtered =
-      rows.filter((_, index) => {
+      getFilteredRows(rows);
 
-         return index % 10 === 0;
+   const labels =
+      filtered.map(row =>
+
+         new Date(row.timestamp)
+         .toLocaleTimeString([], {
+
+            hour: '2-digit',
+            minute: '2-digit'
+
+         })
+
+      );
+
+   const solarData =
+      filtered.map(row => {
+
+         const inverters =
+            parseData(row.inverters || {});
+
+         return Number(
+            getSolarLive(inverters) || 0
+         );
 
       });
 
-   return filtered.map((row) => {
+   const gridData =
+      filtered.map(row => {
 
-      const inverters =
-         parseData(row.inverters);
+         const meters =
+            parseData(row.meters || {});
 
-      const meters =
-         parseData(row.meters);
+         return Number(
+            getGridLive(meters) || 0
+         );
 
-      const solar =
-         getSolarLive(inverters);
+      });
 
-      const grid =
-         getGridLive(meters);
+   const dgData =
+      filtered.map(row => {
 
-      const dg =
-         getDGTotal(meters);
+         const meters =
+            parseData(row.meters || {});
 
-      return {
+         return Number(
+            getDGTotal(meters) || 0
+         );
 
-         timestamp:
-            row.timestamp,
+      });
 
-         solar,
+   return {
 
-         grid,
+      success: true,
 
-         dg,
+      labels,
 
-         load:
-            Number((
-               solar +
-               grid +
-               dg
-            ).toFixed(2))
+      datasets: [
 
-      };
+         {
 
-   });
+            label: 'Solar',
+
+            data: solarData,
+
+            borderColor: '#22c55e',
+
+            backgroundColor:
+               'rgba(34,197,94,0.2)',
+
+            fill: false,
+
+            tension: 0.4
+
+         },
+
+         {
+
+            label: 'Grid',
+
+            data: gridData,
+
+            borderColor: '#3b82f6',
+
+            backgroundColor:
+               'rgba(59,130,246,0.2)',
+
+            fill: false,
+
+            tension: 0.4
+
+         },
+
+         {
+
+            label: 'DG',
+
+            data: dgData,
+
+            borderColor: '#f97316',
+
+            backgroundColor:
+               'rgba(249,115,22,0.2)',
+
+            fill: false,
+
+            tension: 0.4
+
+         }
+
+      ]
+
+   };
 
 };
+
 
 
 // =========================
@@ -197,10 +325,17 @@ async (siteId, date) => {
 exports.getInverterGraph =
 async (siteId, date) => {
 
-   const site = sites[siteId];
+   const site =
+      sites[siteId?.trim()];
 
    if (!site) {
-      throw new Error('Invalid Site');
+
+      return {
+
+         success: false,
+
+         message: 'Invalid siteId'
+      };
    }
 
    const { start, end } =
@@ -214,42 +349,119 @@ async (siteId, date) => {
       );
 
    const filtered =
-      rows.filter((_, index) => {
+      getFilteredRows(rows);
 
-         return index % 10 === 0;
+   const labels =
+      filtered.map(row =>
+
+         new Date(row.timestamp)
+         .toLocaleTimeString([], {
+
+            hour: '2-digit',
+            minute: '2-digit'
+
+         })
+
+      );
+
+   const inverterMap = {};
+
+   filtered.forEach((row, rowIndex) => {
+
+      const inverters =
+         parseData(row.inverters || {});
+
+      Object.keys(inverterMap)
+      .forEach((key) => {
+
+         if (!inverters[key]) {
+
+            inverterMap[key].push(null);
+         }
 
       });
 
-   return filtered.map((row) => {
-
-      const inverters =
-         parseData(row.inverters);
-
-      const data = {
-
-         timestamp:
-            row.timestamp
-
-      };
-
       Object.entries(inverters)
-         .forEach(([key, value]) => {
+      .forEach(([key, value]) => {
 
-            data[key] =
-               Number((
+         if (!inverterMap[key]) {
 
+            inverterMap[key] =
+               Array(rowIndex).fill(null);
+         }
+
+         inverterMap[key].push(
+
+            Number(
+
+               (
                   (value.AC_Active_Power || 0)
                   / 1000
 
-               ).toFixed(2));
+               ).toFixed(2)
+            )
+         );
 
-         });
-
-      return data;
+      });
 
    });
 
+   Object.keys(inverterMap)
+   .forEach((key) => {
+
+      while (
+         inverterMap[key].length < labels.length
+      ) {
+
+         inverterMap[key].push(null);
+      }
+
+   });
+
+   const colors = [
+
+      "#22c55e",
+      "#3b82f6",
+      "#f97316",
+      "#a855f7",
+      "#ef4444",
+      "#14b8a6"
+
+   ];
+
+   const datasets =
+      Object.keys(inverterMap)
+      .map((key, index) => ({
+
+         label: key,
+
+         data:
+            inverterMap[key],
+
+         borderColor:
+            colors[index % colors.length],
+
+         backgroundColor:
+            colors[index % colors.length] + "33",
+
+         fill: false,
+
+         tension: 0.4
+
+      }));
+
+   return {
+
+      success: true,
+
+      labels,
+
+      datasets
+
+   };
+
 };
+
 
 
 // =========================
@@ -259,63 +471,78 @@ async (siteId, date) => {
 exports.getImportExportGraph =
 async (siteId, date) => {
 
-   const site = sites[siteId];
+   const site =
+      sites[siteId?.trim()];
 
    if (!site) {
-      throw new Error('Invalid Site');
+
+      return {
+
+         success: false,
+
+         message: 'Invalid siteId'
+      };
    }
 
-   const month = new Date(date);
+   const month =
+      date
+         ? new Date(date)
+         : new Date();
 
    const start =
-      new Date(Date.UTC(
-         month.getUTCFullYear(),
-         month.getUTCMonth(),
+      new Date(
+
+         month.getFullYear(),
+
+         month.getMonth(),
+
          1
-      ));
+
+      );
 
    const end =
-      new Date(Date.UTC(
-         month.getUTCFullYear(),
-         month.getUTCMonth() + 1,
+      new Date(
+
+         month.getFullYear(),
+
+         month.getMonth() + 1,
+
          0,
+
          23,
+
          59,
+
          59
-      ));
 
-   // const rows =
-   //    await getRows(
-   //       site,
-   //       start.toISOString(),
-   //       end.toISOString()
-   //    );
+      );
 
-   // const rows =
-   // (await getRows(
-   //    site,
-   //    start.toISOString(),
-   //    end.toISOString()
-   // )).slice(-3000);
+   const rows =
+      await getRows(
 
-   const rows = (
-   await getRows(
-      site,
-      start.toISOString(),
-      end.toISOString()
-   )
-   ).slice(-500);
+         site,
+
+         start.toISOString(),
+
+         end.toISOString()
+
+      );
+
+   // LIMIT HUGE DATASET
+   const limitedRows =
+      rows.slice(-5000);
+
    const grouped = {};
 
+   limitedRows.forEach((row) => {
 
-   rows.forEach((row) => {
-
-      if (!row.timestamp) return;
+      if (!row?.timestamp) return;
 
       const day =
          row.timestamp.split('T')[0];
 
       if (!grouped[day]) {
+
          grouped[day] = [];
       }
 
@@ -323,32 +550,55 @@ async (siteId, date) => {
 
    });
 
-   return Object.entries(grouped)
+   const result =
+      Object.entries(grouped)
       .map(([date, records]) => {
 
          records.sort((a, b) =>
+
             new Date(a.timestamp)
-            - new Date(b.timestamp)
+            -
+            new Date(b.timestamp)
+
          );
 
-         const first = records[0];
-         const last = records[records.length - 1];
+         const first =
+            records[0];
+
+         const last =
+            records[records.length - 1];
 
          const firstMeters =
-            parseData(first.meters || {});
+            parseData(first?.meters || {});
 
          const lastMeters =
-            parseData(last.meters || {});
+            parseData(last?.meters || {});
+
+         const importStart =
+            Number(
+               getGridImport(firstMeters)
+            ) || 0;
+
+         const importEnd =
+            Number(
+               getGridImport(lastMeters)
+            ) || 0;
+
+         const exportStart =
+            Number(
+               getGridExport(firstMeters)
+            ) || 0;
+
+         const exportEnd =
+            Number(
+               getGridExport(lastMeters)
+            ) || 0;
 
          const importValue =
-            Number(getGridImport(lastMeters) || 0)
-            -
-            Number(getGridImport(firstMeters) || 0);
+            importEnd - importStart;
 
          const exportValue =
-            Number(getGridExport(lastMeters) || 0)
-            -
-            Number(getGridExport(firstMeters) || 0);
+            exportEnd - exportStart;
 
          return {
 
@@ -364,7 +614,56 @@ async (siteId, date) => {
 
       });
 
+   return {
+
+      success: true,
+
+      labels:
+         result.map(item => item.date),
+
+      datasets: [
+
+         {
+
+            label: 'Import',
+
+            data:
+               result.map(item => item.import),
+
+            backgroundColor:
+               'rgba(59,130,246,0.7)',
+
+            borderColor:
+               '#3b82f6',
+
+            borderWidth: 1
+
+         },
+
+         {
+
+            label: 'Export',
+
+            data:
+               result.map(item => item.export),
+
+            backgroundColor:
+               'rgba(34,197,94,0.7)',
+
+            borderColor:
+               '#22c55e',
+
+            borderWidth: 1
+
+         }
+
+      ]
+
+   };
+
 };
+
+
 
 // =========================
 // SOLAR GENERATION GRAPH
@@ -373,63 +672,78 @@ async (siteId, date) => {
 exports.getSolarGenerationGraph =
 async (siteId, date) => {
 
-   const site = sites[siteId];
+   const site =
+      sites[siteId?.trim()];
 
    if (!site) {
-      throw new Error('Invalid Site');
+
+      return {
+
+         success: false,
+
+         message: 'Invalid siteId'
+      };
    }
 
    const month =
-      new Date(date);
+      date
+         ? new Date(date)
+         : new Date();
 
    const start =
-      new Date(Date.UTC(
-         month.getUTCFullYear(),
-         month.getUTCMonth(),
+      new Date(
+
+         month.getFullYear(),
+
+         month.getMonth(),
+
          1
-      ));
+
+      );
 
    const end =
-      new Date(Date.UTC(
-         month.getUTCFullYear(),
-         month.getUTCMonth() + 1,
+      new Date(
+
+         month.getFullYear(),
+
+         month.getMonth() + 1,
+
          0,
+
          23,
+
          59,
+
          59
-      ));
 
-   // const rows =
-   //    await getRows(
-   //       site,
-   //       start.toISOString(),
-   //       end.toISOString()
-   //    );
-   // const rows =
-   // (await getRows(
-   //    site,
-   //    start.toISOString(),
-   //    end.toISOString()
-   // )).slice(-3000);
+      );
 
-   const rows = (
-   await getRows(
-      site,
-      start.toISOString(),
-      end.toISOString()
-   )
-).slice(-500);
+   const rows =
+      await getRows(
+
+         site,
+
+         start.toISOString(),
+
+         end.toISOString()
+
+      );
+
+   // LIMIT HUGE DATASET
+   const limitedRows =
+      rows.slice(-5000);
 
    const grouped = {};
-   
-   rows.forEach((row) => {
 
-      if (!row.timestamp) return;
+   limitedRows.forEach((row) => {
+
+      if (!row?.timestamp) return;
 
       const day =
          row.timestamp.split('T')[0];
 
       if (!grouped[day]) {
+
          grouped[day] = [];
       }
 
@@ -437,24 +751,29 @@ async (siteId, date) => {
 
    });
 
-   return Object.entries(grouped)
+   const result =
+      Object.entries(grouped)
       .map(([date, records]) => {
 
          records.sort((a, b) =>
+
             new Date(a.timestamp)
-            - new Date(b.timestamp)
+            -
+            new Date(b.timestamp)
+
          );
 
          const last =
             records[records.length - 1];
 
          const inverters =
-            parseData(last.inverters || {});
+            parseData(last?.inverters || {});
+
+         const solarTotal =
+            getSolarDayTotal(inverters);
 
          const generation =
-            Number(
-               getSolarDayTotal(inverters) || 0
-            );
+            Number(solarTotal) || 0;
 
          return {
 
@@ -466,5 +785,17 @@ async (siteId, date) => {
          };
 
       });
+
+   return {
+
+      success: true,
+
+      labels:
+         result.map(item => item.date),
+
+      values:
+         result.map(item => item.generation)
+
+   };
 
 };

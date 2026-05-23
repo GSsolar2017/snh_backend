@@ -14,7 +14,7 @@ async (siteId) => {
    const site = sites[siteId];
 
    if (!site) {
-      throw new Error('Invalid Site');
+      return [];
    }
 
    const now = new Date();

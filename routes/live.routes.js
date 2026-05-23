@@ -13,15 +13,30 @@ require('../controllers/energySummary.controller');
 const graphController =
 require('../controllers/graph.controller');
 
+/* =========================
+   LIVE DATA
+========================= */
+
+const dashboardController =
+require('../controllers/dashboard.controller');
+
 router.get(
    '/:siteId/live',
-   liveController.getLiveData
+   dashboardController.getDashboardData
 );
+
+/* =========================
+   ENERGY SUMMARY
+========================= */
 
 router.get(
    '/:siteId/energy-summary',
    energyController.getEnergySummary
 );
+
+/* =========================
+   GRAPHS
+========================= */
 
 router.get(
    '/:siteId/graphs/energy-sources',
